@@ -11,9 +11,11 @@ CFLAGS=-std=c99 -Wall -pedantic -O3 -msse2 -ftree-vectorizer-verbose=1 -fopenmp 
 BINDIR=../bin
 CUDADIR=cuda/
 SSEDIR=sse/
+BLOCKCHAINDIR=blockchain/
 BIN=$(BINDIR)/Lyra2
 BINCUDA=$(BINDIR)/Lyra2CUDA
 BINCUDATTACK=$(BINDIR)/Lyra2CUDAttack
+BINBLOCKCHAIN=$(BINDIR)/Blockchain
 
 nCols=256
 nThreads=2
@@ -26,11 +28,11 @@ parameters=-DN_COLS=$(nCols)  -DnPARALLEL=$(nThreads) -DRHO=$(nRoundsSponge) -DB
 cudaparams=-arch=compute_$(PTX)  -code=sm_$(SM)
 
 # CUDA Flags
-PTX = 35  # Must suits the GPU board used.
-SM = 35   # Must suits the GPU board used.
+PTX = 50  # Must suits the GPU board used.
+SM = 50   # Must suits the GPU board used.
 
 default:
-	
+
 	@echo " "
 	@echo "To build Lyra2, type:"
 	@echo "      make OPTION [PARAMETERS]"
@@ -77,20 +79,20 @@ else
 	$(error $(nRoundsSpongeError))
 endif
 
-bSpongeTest: 
+bSpongeTest:
 ifeq ($(bSponge),$(filter $(bSponge),8 10 12))
 else
 	$(error $(bSpongeTestError))
 endif
 
-spongeTest: 
+spongeTest:
 ifeq ($(sponge),$(filter $(sponge),0 1 2))
 else
 	$(error $(spongeTestError))
 endif
 
 generic-x86-64:	    Lyra2.c Sponge.c Main.c Lyra2.h Sponge.h $(makeTests)
-	mkdir -p $(BINDIR)	
+	mkdir -p $(BINDIR)
 	$(CC) $(CFLAGS) Sponge.c Lyra2.c Main.c -o $(BIN) $(parameters)
 	@echo "Build completed, binaries in $(BIN)"
 
@@ -98,11 +100,11 @@ linux-x86-64-sse:	$(SSEDIR)Lyra2.c $(SSEDIR)Sponge.c Main.c $(SSEDIR)Lyra2.h $(S
 	mkdir -p $(BINDIR)
 	$(CC) $(CFLAGS) $(SSEDIR)Sponge.c $(SSEDIR)Lyra2.c Main.c -o $(BIN) $(parameters)
 	@echo "Build completed, binaries in $(BIN)"
-	
+
 cygwin-x86-64:	    generic-x86-64
 
 cygwin-x86-64-sse:	linux-x86-64-sse
-	
+
 linux-x86-64-cuda:  $(CUDADIR)Lyra2.cu $(CUDADIR)Sponge.cu $(CUDADIR)Main.cu $(CUDADIR)Lyra2.h $(CUDADIR)Sponge.h $(makeTests)
 	mkdir -p $(BINDIR)
 	$(NVCC) $(CUDADIR)Lyra2.cu $(CUDADIR)Sponge.cu $(CUDADIR)Main.cu -O3 -o $(BINCUDA) -lcudart $(parameters)  -arch=compute_$(PTX)  -code=sm_$(SM)
@@ -112,8 +114,13 @@ linux-x86-64-cuda-attack:  $(CUDADIR)attackLyra2.cu $(CUDADIR)attackSponge.cu $(
 	mkdir -p $(BINDIR)
 	$(NVCC) $(CUDADIR)attackLyra2.cu $(CUDADIR)attackSponge.cu $(CUDADIR)attackMain.cu -O3 -o $(BINCUDATTACK) -lcudart $(parameters) -arch=compute_$(PTX)  -code=sm_$(SM)
 	@echo "Build completed, binaries in $(BINCUDATTACK)"
-	
+
+blockchain:         $(BLOCKCHAINDIR)Main.c Sponge.c Lyra2.c Lyra2.h Sponge.h $(makeTests)
+	mkdir -p $(BINDIR)
+	$(CC) $(CFLAGS) $(BLOCKCHAINDIR)*.c Sponge.c Lyra2.c -o $(BINBLOCKCHAIN) -DN_COLS=4 -DnPARALLEL=1 -DRHO=1 -DBLOCK_LEN_INT64=12 -DSPONGE=0 -DBENCH=0
+	@echo "Build completed, binaries in $(BINBLOCKCHAIN)"
+
 clean:
-	rm -rf *.o $(BIN) $(BINCUDA) $(BINDIR)
+	rm -rf *.o $(BIN) $(BINCUDA) $(BINBLOCKCHAIN) $(BINDIR)
 
 
